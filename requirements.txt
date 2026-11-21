@@ -1,0 +1,6 @@
+tensorflow>=2.16
+pillow
+matplotlib
+numpy
+h5py
+jupyter

@@ -1,0 +1,1095 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CIFAR-10 Vision Classifier — Inference Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-subtle: #f1f5f9;
+    --stage-bg: #0b0f19;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent: #0f172a;
+    --accent-hover: #1e293b;
+    --accent-fg: #ffffff;
+    --accent-blue: #2563eb;
+    --accent-blue-soft: #eff6ff;
+    --accent-blue-border: #bfdbfe;
+    --ok: #10b981;
+    --ok-bg: #ecfdf5;
+    --ok-border: #a7f3d0;
+    --ok-text: #065f46;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --warn-border: #fde68a;
+    --warn-text: #92400e;
+    --bad: #dc2626;
+    --bad-bg: #fef2f2;
+    --bad-border: #fecaca;
+    --bad-text: #991b1b;
+    --bar-fill: #94a3b8;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --radius: 10px;
+  }
+
+  [data-theme="dark"] {
+    --bg: #0b0f17;
+    --surface: #111827;
+    --surface-subtle: #182234;
+    --stage-bg: #070a10;
+    --border: #243044;
+    --border-strong: #334155;
+    --text: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --accent: #f8fafc;
+    --accent-hover: #e2e8f0;
+    --accent-fg: #0f172a;
+    --accent-blue: #3b82f6;
+    --accent-blue-soft: rgba(59, 130, 246, 0.14);
+    --accent-blue-border: rgba(59, 130, 246, 0.35);
+    --ok: #10b981;
+    --ok-bg: rgba(16, 185, 129, 0.12);
+    --ok-border: rgba(16, 185, 129, 0.35);
+    --ok-text: #6ee7b7;
+    --warn: #f59e0b;
+    --warn-bg: rgba(245, 158, 11, 0.12);
+    --warn-border: rgba(245, 158, 11, 0.35);
+    --warn-text: #fcd34d;
+    --bad: #ef4444;
+    --bad-bg: rgba(239, 68, 68, 0.12);
+    --bad-border: rgba(239, 68, 68, 0.35);
+    --bad-text: #fca5a5;
+    --bar-fill: #475569;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+
+  /* ---------- Top Utility Bar ---------- */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .brand-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    display: grid;
+    place-items: center;
+  }
+  .brand-badge svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .brand-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .theme-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 5px 11px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .theme-btn:hover {
+    background: var(--surface-subtle);
+    color: var(--text);
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+  .status-pill.online {
+    background: var(--ok-bg);
+    border-color: var(--ok-border);
+    color: var(--ok-text);
+  }
+  .status-pill.online .status-dot { background: var(--ok); }
+  .status-pill.offline {
+    background: var(--bad-bg);
+    border-color: var(--bad-border);
+    color: var(--bad-text);
+  }
+  .status-pill.offline .status-dot { background: var(--bad); }
+
+  /* ---------- Main Container & Header ---------- */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px 24px 56px;
+  }
+
+  .page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-copy h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .header-copy p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    max-width: 62ch;
+  }
+
+  .specs-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .spec-item {
+    background: var(--surface);
+    padding: 8px 14px;
+    min-width: 105px;
+  }
+  .spec-item span {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .spec-item b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 2px;
+  }
+
+  /* ---------- Workbench Grid ---------- */
+  .workbench {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .workbench { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .card-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .card-meta {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .card-body {
+    padding: 20px;
+  }
+
+  /* ---------- Upload Dropzone ---------- */
+  .drop {
+    position: relative;
+    aspect-ratio: 16 / 11;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface-subtle);
+    border: 1.5px dashed var(--border-strong);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .drop:hover, .drop.drag {
+    border-color: var(--accent-blue);
+    background: var(--accent-blue-soft);
+  }
+  .drop.has-image {
+    border-style: solid;
+    border-color: var(--border);
+    background: var(--stage-bg);
+  }
+  .drop-copy { padding: 0 24px; }
+  .upload-ico {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 12px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    color: var(--text);
+  }
+  .upload-ico svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .drop-copy strong {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .drop-copy span {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+  .drop.has-image .drop-copy { display: none; }
+
+  #preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+  }
+  .drop.has-image #preview { display: block; }
+
+  .scan {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -48px;
+    height: 48px;
+    display: none;
+    background: linear-gradient(to bottom, transparent, rgba(37, 99, 235, 0.25));
+    border-bottom: 2px solid var(--accent-blue);
+  }
+  .drop.busy .scan {
+    display: block;
+    animation: sweep 1.1s linear infinite;
+  }
+  @keyframes sweep { to { top: 100%; } }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--accent-fg);
+    background: var(--accent);
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn.ghost {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border-strong);
+  }
+  .btn.ghost:hover { background: var(--surface-subtle); }
+  .btn[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .fname {
+    font-family: var(--mono);
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-left: auto;
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  @media (max-width: 560px) {
+    .fname { margin-left: 0; max-width: 100%; flex-basis: 100%; }
+  }
+
+  /* ---------- Prediction Output + Side 32x32 Model View ---------- */
+  .verdict-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 8px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+  }
+  @media (max-width: 540px) {
+    .verdict-row { flex-direction: column; align-items: flex-start; }
+  }
+
+  .verdict { min-width: 0; flex: 1; }
+  .verdict .small {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin: 0 0 4px;
+  }
+  .verdict .big {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-weight: 700;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-transform: capitalize;
+    color: var(--text);
+  }
+  .verdict .class-badge {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    display: grid;
+    place-items: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-blue);
+  }
+  .verdict .sub {
+    margin: 6px 0 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  .side-metrics {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: none;
+  }
+
+  .model-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+  }
+  #tiny {
+    width: 68px;
+    height: 68px;
+    image-rendering: pixelated;
+    border-radius: 4px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+  }
+  .model-side span {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* Precision Ring Gauge */
+  .gauge {
+    position: relative;
+    width: 86px;
+    height: 86px;
+    flex: none;
+  }
+  .gauge svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .gauge .track {
+    fill: none;
+    stroke: var(--border-strong);
+    stroke-width: 8;
+  }
+  .gauge .arc {
+    fill: none;
+    stroke: var(--accent-blue);
+    stroke-width: 8;
+    stroke-linecap: butt;
+    stroke-dasharray: 263.89;
+    stroke-dashoffset: 263.89;
+    transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .gauge.low .arc { stroke: var(--warn); }
+  .gauge-num {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    text-align: center;
+  }
+  .gauge-num b {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.1;
+    color: var(--text);
+  }
+  .gauge-num span {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .alert {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    border: 1px solid;
+  }
+  .alert.warn {
+    color: var(--warn-text);
+    border-color: var(--warn-border);
+    background: var(--warn-bg);
+  }
+  .alert.error {
+    color: var(--bad-text);
+    border-color: var(--bad-border);
+    background: var(--bad-bg);
+  }
+  .alert code {
+    font-family: var(--mono);
+    background: rgba(128, 128, 128, 0.14);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 11.5px;
+  }
+
+  .section-block { margin-top: 20px; }
+  .section-title {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* Target Class Directory */
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  @media (max-width: 480px) { .chips { grid-template-columns: 1fr; } }
+  .chips li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 11px;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: capitalize;
+  }
+  .chips li span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .chips + .hint {
+    display: block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Probability Distribution Bars */
+  .bars {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+  }
+  .bars li {
+    display: grid;
+    grid-template-columns: 104px 1fr 56px;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+  .bars .name {
+    text-transform: capitalize;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .bars .track {
+    display: block;
+    height: 7px;
+    border-radius: 3px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .bars .fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--bar-fill);
+    transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .bars .val {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .bars li.top .name {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .bars li.top .val {
+    color: var(--accent-blue);
+    font-weight: 600;
+  }
+  .bars li.top .fill {
+    background: var(--accent-blue);
+  }
+
+  /* ---------- Pipeline Architecture Strip ---------- */
+  .pipeline {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 0;
+    list-style: none;
+  }
+  @media (max-width: 760px) { .pipeline { grid-template-columns: 1fr; } }
+  .pipeline li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-blue);
+    background: var(--accent-blue-soft);
+    border: 1px solid var(--accent-blue-border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 1px;
+  }
+  .pipeline b {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .pipeline span {
+    display: block;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+
+  footer {
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+  .tech { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tech span {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drop.busy .scan { animation: none; top: 45%; }
+    .gauge .arc, .bars .fill, body { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2m8-16h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2M9 12h6M12 9v6"/></svg>
+      </span>
+      <span>CIFAR-10 Vision Classifier</span>
+      <span class="brand-tag">CNN v1.0</span>
+    </div>
+    <div class="topbar-right">
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle dark or light theme">
+        Dark Mode
+      </button>
+      <span class="status-pill" id="server">
+        <i class="status-dot"></i>
+        <span id="server-text">Checking API…</span>
+      </span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-header">
+    <div class="header-copy">
+      <h1>Convolutional Image Classification</h1>
+      <p>Upload an image sample to run real-time forward inference against a 10-class CNN trained on the CIFAR-10 benchmark dataset.</p>
+    </div>
+    <div class="specs-strip" aria-label="Model specifications">
+      <div class="spec-item"><span>Classes</span><b>10 Labels</b></div>
+      <div class="spec-item"><span>Input Tensor</span><b>32×32 RGB</b></div>
+      <div class="spec-item"><span>Test Accuracy</span><b>77.1%</b></div>
+      <div class="spec-item"><span>Training Set</span><b>50,000</b></div>
+    </div>
+  </div>
+
+  <main class="workbench">
+    <!-- Left Column: Input Sample -->
+    <section class="card" aria-label="Image input">
+      <div class="card-header">
+        <h2 class="card-title">1. Input Sample</h2>
+        <span class="card-meta">JPG / PNG / WebP &le; 15MB</span>
+      </div>
+      <div class="card-body">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an image. You can also drag and drop or paste one.">
+          <div class="drop-copy">
+            <div class="upload-ico">
+              <svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+            </div>
+            <strong>Drop image file or click to browse</strong>
+            <span>Supports clipboard paste (Ctrl+V / Cmd+V)</span>
+          </div>
+          <img id="preview" alt="Uploaded sample preview">
+          <div class="scan"></div>
+        </div>
+        <input type="file" id="file" accept="image/*" hidden>
+
+        <div class="actions">
+          <button class="btn" id="pick" type="button">Select Image</button>
+          <button class="btn ghost" id="again" type="button" disabled>Re-run Inference</button>
+          <span class="fname" id="fname">No file loaded</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Inference Telemetry + Side 32x32 Model View -->
+    <section class="card" aria-label="Prediction telemetry">
+      <div class="card-header">
+        <h2 class="card-title">2. Inference Output</h2>
+        <span class="card-meta" id="state">IDLE</span>
+      </div>
+      <div class="card-body">
+        <div class="verdict-row">
+          <div class="verdict" id="verdict" aria-live="polite">
+            <p class="small">Top Predicted Class</p>
+            <p class="big"><span class="class-badge" aria-hidden="true">--</span>Awaiting Input</p>
+            <p class="sub">Upload an image to compute softmax class probabilities.</p>
+          </div>
+
+          <div class="side-metrics">
+            <div class="model-side">
+              <canvas id="tiny" width="32" height="32" aria-label="The 32 by 32 pixel version of your image"></canvas>
+              <span>32×32 VIEW</span>
+            </div>
+
+            <div class="gauge" id="gauge">
+              <svg viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="track" cx="50" cy="50" r="42"/>
+                <circle class="arc" id="arc" cx="50" cy="50" r="42"/>
+              </svg>
+              <div class="gauge-num">
+                <b id="gnum">&ndash;</b>
+                <span>Conf.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="alert"></div>
+
+        <div class="section-block" id="idle">
+          <div class="section-title">
+            <span>Supported Target Classes (CIFAR-10)</span>
+            <span>Index 0–9</span>
+          </div>
+          <ul class="chips" id="chips"></ul>
+          <span class="hint">Out-of-distribution images will be mapped to the closest matching class above.</span>
+        </div>
+
+        <div class="section-block" id="results" hidden>
+          <div class="section-title">
+            <span>Softmax Probability Distribution</span>
+            <span>Confidence %</span>
+          </div>
+          <ul class="bars" id="bars"></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <ol class="pipeline" aria-label="Inference pipeline">
+    <li>
+      <span class="step-num">01</span>
+      <div>
+        <b>Multipart Ingestion</b>
+        <span>Client transmits raw image bytes via POST /predict to the FastAPI inference service.</span>
+      </div>
+    </li>
+    <li>
+      <span class="step-num">02</span>
+      <div>
+        <b>Tensor Preprocessing</b>
+        <span>Image is converted to RGB, resized to 32×32 px, and rescaled to float32 [0, 1].</span>
+      </div>
+    </li>
+    <li>
+      <span class="step-num">03</span>
+      <div>
+        <b>Forward Pass &amp; Softmax</b>
+        <span>Trained CNN extracts spatial feature maps and outputs calibrated class probabilities.</span>
+      </div>
+    </li>
+  </ol>
+
+  <footer>
+    <span>Architecture: Sequential Conv2D + MaxPooling + Dense · Trained for 12 epochs (Adam).</span>
+    <div class="tech">
+      <span>TensorFlow</span>
+      <span>Keras</span>
+      <span>FastAPI</span>
+      <span>Uvicorn</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+  // If this file is opened straight from disk, talk to the local server instead.
+  const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+  const CLASSES = [
+    "airplane", "automobile", "bird", "cat", "deer",
+    "dog", "frog", "horse", "ship", "truck"
+  ];
+  const CODE = {
+    airplane: "AIR", automobile: "CAR", bird: "BRD", cat: "CAT", deer: "DER",
+    dog: "DOG", frog: "FRG", horse: "HRS", ship: "SHP", truck: "TRK"
+  };
+  const CIRC = 2 * Math.PI * 42;
+
+  const $ = (id) => document.getElementById(id);
+  const drop = $("drop"), fileInput = $("file"), preview = $("preview");
+  const verdict = $("verdict"), bars = $("bars"), againBtn = $("again"), fname = $("fname");
+  const arc = $("arc"), gauge = $("gauge"), gnum = $("gnum"), stateEl = $("state"), alertEl = $("alert");
+  const idle = $("idle"), results = $("results");
+  const tiny = $("tiny"), tctx = tiny.getContext("2d");
+  const themeBtn = $("themeBtn");
+  let current = null, objectUrl = null, token = 0;
+
+  themeBtn.addEventListener("click", () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    document.documentElement.setAttribute("data-theme", isDark ? "light" : "dark");
+    themeBtn.textContent = isDark ? "Dark Mode" : "Light Mode";
+  });
+
+  $("chips").innerHTML = CLASSES.map((c, idx) =>
+    `<li>${c}<span>#${idx}</span></li>`
+  ).join("");
+
+  arc.style.strokeDasharray = CIRC;
+  arc.style.strokeDashoffset = CIRC;
+
+  /* ----- server status ----- */
+  async function checkServer() {
+    const pill = $("server"), txt = $("server-text");
+    try {
+      const r = await fetch(API + "/openapi.json", { cache: "no-store" });
+      if (!r.ok) throw 0;
+      pill.className = "status-pill online";
+      txt.textContent = "API ONLINE";
+    } catch (_) {
+      pill.className = "status-pill offline";
+      txt.textContent = "API OFFLINE";
+    }
+  }
+  checkServer();
+  setInterval(checkServer, 15000);
+
+  /* ----- choosing an image ----- */
+  const openPicker = () => fileInput.click();
+  $("pick").addEventListener("click", openPicker);
+  drop.addEventListener("click", openPicker);
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
+  });
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) load(fileInput.files[0]);
+    fileInput.value = "";
+  });
+  againBtn.addEventListener("click", () => current && classify(current));
+
+  ["dragenter", "dragover"].forEach((t) => drop.addEventListener(t, (e) => {
+    e.preventDefault();
+    drop.classList.add("drag");
+  }));
+  ["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => {
+    e.preventDefault();
+    drop.classList.remove("drag");
+  }));
+  drop.addEventListener("drop", (e) => {
+    const f = e.dataTransfer.files[0];
+    if (f) load(f);
+  });
+  window.addEventListener("paste", (e) => {
+    const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
+    if (item) load(item.getAsFile());
+  });
+
+  function load(file) {
+    if (!file.type.startsWith("image/")) {
+      fail("Unsupported file format. Please select a valid JPG, PNG, or WebP image.");
+      return;
+    }
+    current = file;
+    fname.textContent = file.name || "clipboard-image.png";
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    preview.onload = () => {
+      tctx.imageSmoothingEnabled = true;
+      tctx.clearRect(0, 0, 32, 32);
+      tctx.drawImage(preview, 0, 0, 32, 32);
+    };
+    preview.src = objectUrl;
+    drop.classList.add("has-image");
+    classify(file);
+  }
+
+  /* ----- ask the server ----- */
+  function setGauge(pct, low) {
+    gauge.classList.toggle("low", !!low);
+    arc.style.strokeDashoffset = CIRC * (1 - pct / 100);
+    gnum.textContent = pct == null ? "–" : pct.toFixed(1) + "%";
+  }
+
+  async function classify(file) {
+    const mine = ++token;
+    drop.classList.add("busy");
+    againBtn.disabled = true;
+    alertEl.innerHTML = "";
+    stateEl.textContent = "RUNNING INFERENCE…";
+    setGauge(0);
+    gnum.innerHTML = "&ndash;";
+    const body = new FormData();
+    body.append("file", file, file.name || "pasted.png");
+    try {
+      const res = await fetch(API + "/predict", { method: "POST", body });
+      if (!res.ok) {
+        let msg = "The server could not classify this image.";
+        try { msg = (await res.json()).detail || msg; } catch (_) {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      if (mine === token) show(data.results);
+    } catch (err) {
+      if (mine !== token) return;
+      fail(err instanceof TypeError
+        ? 'Connection refused. Start the backend server using <code>uvicorn server:app --port 8000</code> and retry.'
+        : err.message);
+    } finally {
+      if (mine === token) {
+        drop.classList.remove("busy");
+        againBtn.disabled = false;
+      }
+    }
+  }
+
+  function show(list) {
+    const top = list[0], low = top.confidence < 50;
+    stateEl.textContent = low ? "LOW CONFIDENCE" : "COMPLETED";
+    verdict.innerHTML =
+      `<p class="small">Top Predicted Class</p>` +
+      `<p class="big"><span class="class-badge" aria-hidden="true">${CODE[top.label] || "CLS"}</span>${top.label}</p>` +
+      `<p class="sub"><strong>${top.confidence.toFixed(1)}%</strong> confidence &middot; Runner-up: ${list[1].label} (${list[1].confidence.toFixed(1)}%)</p>`;
+    setGauge(top.confidence, low);
+    alertEl.innerHTML = low
+      ? '<p class="alert warn"><strong>Low Confidence Warning:</strong> Prediction certainty is below 50%. The input sample may fall outside the 10 CIFAR-10 training categories.</p>'
+      : "";
+    idle.hidden = true;
+    results.hidden = false;
+    bars.innerHTML = list.map((r, i) =>
+      `<li class="${i === 0 ? "top" : ""}">` +
+      `<span class="name">${r.label}</span>` +
+      `<span class="track"><span class="fill" data-w="${r.confidence}"></span></span>` +
+      `<span class="val">${r.confidence.toFixed(1)}%</span>` +
+      `</li>`
+    ).join("");
+    requestAnimationFrame(() => requestAnimationFrame(() =>
+      bars.querySelectorAll(".fill").forEach((f) => {
+        const w = +f.dataset.w;
+        f.style.width = (w < 0.1 ? 0 : Math.max(w, 0.8)) + "%";
+      })
+    ));
+  }
+
+  function fail(html) {
+    stateEl.textContent = "ERROR";
+    setGauge(0);
+    gnum.innerHTML = "&ndash;";
+    verdict.innerHTML =
+      '<p class="small">Top Predicted Class</p>' +
+      '<p class="big"><span class="class-badge" aria-hidden="true">ERR</span>Inference Failed</p>' +
+      '<p class="sub">Resolve the error below and re-run inference.</p>';
+    alertEl.innerHTML = `<p class="alert error">${html}</p>`;
+    idle.hidden = false;
+    results.hidden = true;
+  }
+</script>
+</body>
+</html>
